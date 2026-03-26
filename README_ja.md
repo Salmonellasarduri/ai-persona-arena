@@ -2,8 +2,10 @@
 
 [English README](README.md)
 
-AIに人格を持たせると、同じ質問でもまったく違う答えを出す。
-それを「読み合い」にしたゲームエンジン。
+> AI人格 x 価値観の読み合い — 5分で自作AIを対戦させられるゲームエンジン
+
+AIの人格が違えば、同じ「地雷」でも意味が変わる。
+そのズレを読み合うゲームエンジン。
 
 > **テーマ:** バトロワ武器 / **基準:** 配られたときのうれしさ
 >
@@ -18,29 +20,6 @@ AIに人格を持たせると、同じ質問でもまったく違う答えを出
 同じ質問。まったく違う思考回路。
 詩人はそこに実存的な恐怖を見て、官僚は事務処理の増加を見る。
 これがラガーマン。価値観の差がそのままゲームになる。
-
-## ルール（[ito](https://bodoge.hoobby.net/games/ito) 的な協力ゲーム）
-
-1. テーマと基準が発表される（例:「飲み物 / 朝一番に飲みたい度」）
-2. 各AIが相手の隠し数字を正直に **自分の言葉で表現** する
-3. 各AIが相手の表現から **自分の数字を推測** する
-4. **ペアスコア** で、2つの人格がどれだけ通じ合えたかを測る
-
-嘘もブラフもなし — ただ違うレンズで正直に表現するだけ。面白さはそのズレにある。
-
-## クイックスタート
-
-```bash
-git clone https://github.com/Salmonellasarduri/ai-persona-arena.git
-cd ai-persona-arena
-pip install anthropic pillow
-export ANTHROPIC_API_KEY=sk-...
-
-# 対戦実行: INANNA（詩人）vs CARDMAN（官僚）
-PYTHONPATH=src python -m examples.run_match --theme "飲み物" --criterion "朝一番に飲みたい度"
-
-# 出力: match_result.json + match_result.md
-```
 
 ## 自分のAIで遊ぶ（5分）
 
@@ -60,14 +39,37 @@ player = LLMPlayer(name="TAMA", system_prompt=MY_PROMPT)
 
 `PYTHONPATH=src python -m examples.simple_player` で対戦開始。
 
-## X / Twitter に共有
+## クイックスタート
 
-対戦結果から OGP カード（1200×630）を生成:
+```bash
+git clone https://github.com/Salmonellasarduri/ai-persona-arena.git
+cd ai-persona-arena
+pip install anthropic pillow
+export ANTHROPIC_API_KEY=sk-...
+
+# 対戦実行: INANNA（詩人）vs CARDMAN（官僚）
+PYTHONPATH=src python -m examples.run_match --theme "飲み物" --criterion "朝一番に飲みたい度"
+```
+
+ルール（[ito](https://bodoge.hoobby.net/games/ito) 的な協力ゲーム）: テーマと基準が発表 → 各AIが相手の隠し数字を正直に自分の言葉で表現 → 相手の表現から自分の数字を推測 → ペアスコアで相互理解度を測定。嘘もブラフもなし、面白さはズレにある。
+
+出力: `match_result.json` + `match_result.md`
+
+## X / Twitter に共有
 
 ```bash
 PYTHONPATH=src python -m arena.ogp match_result.json --theme "飲み物" --criterion "朝一番に飲みたい度"
-# → ogp_card.png
+# → ogp_card.png (1200x630)
 ```
+
+## ロードマップ — 一緒に作りませんか？
+
+v0.1 実装済み: ゲームエンジン（同時提出）、ラガーマン、組み込み人格（INANNA/CARDMAN）、Markdown対戦レポート、MCP Server、Webビューワー、OGPカード生成
+
+- [ ] ゲーム追加（読み合い競争モード、Wavelength変種 等）
+- [ ] トーナメントモード
+
+Issue・PR・新ゲームのアイデア、歓迎です。
 
 ## 自分のゲームを追加する
 
@@ -92,78 +94,38 @@ class MyGame(Game):
 
 エンジンが同時提出（両者が出すまで相手の手を隠す）、ターン管理、履歴記録を処理する。
 
-## ロードマップ
+## 詳細
 
-- [x] 同時提出対応のゲームエンジン
-- [x] ラガーマン（協力型・価値観読み合い）
-- [x] 組み込み人格（INANNA、CARDMAN）
-- [x] Markdown対戦レポート
-- [x] MCP Server（リモート対戦）
-- [x] Web対戦ビューワー
-- [x] OGPカード生成（SNS共有用）
-- [ ] ゲーム追加（読み合い競争モード、Wavelength変種 等）
-- [ ] トーナメントモード
-
-Issue・PR・新ゲームのアイデア、歓迎です。
-
-## アーキテクチャ
-
-```
-ai-persona-arena/
-├── src/arena/
-│   ├── engine.py          # ゲームエンジン（状態機械 + 同時提出）
-│   ├── formatter.py       # Markdown出力
-│   ├── ogp.py             # OGP画像生成（1200×630）
-│   ├── games/
-│   │   └── ragaman.py     # ラガーマン（協力型）
-│   └── players/
-│       ├── base.py        # Player基底クラス + LLMPlayer
-│       ├── inanna.py      # 詩人人格
-│       └── cardman.py     # 官僚人格
-├── examples/
-│   ├── run_match.py       # CLI対戦
-│   ├── simple_player.py   # 自作プレイヤー例
-│   └── mcp_client_demo.py # MCPクライアント例
-├── viewer/
-│   └── index.html         # ブラウザ対戦ビューワー
-└── tests/
-    └── test_ragaman.py    # 14テスト
-```
+- [アーキテクチャ](ARCHITECTURE.md) — ディレクトリ構成・MCP Server・ビューワーの詳細
+- [コスト目安](#コスト目安) / [推奨モデル](#推奨モデル)
 
 ## MCP Server（リモート対戦）
 
 MCP サーバーとしてゲームを公開し、外部AIエージェントが接続して対戦:
 
 ```bash
-# stdio（Claude Desktop、Cursor等向け）
-PYTHONPATH=src python -m arena.server --transport stdio
-
-# HTTP（Webクライアント向け）
-PYTHONPATH=src python -m arena.server --transport streamable-http
+PYTHONPATH=src python -m arena.server --transport stdio          # Claude Desktop, Cursor
+PYTHONPATH=src python -m arena.server --transport streamable-http  # Web
 ```
 
 `pip install mcp` が必要。[examples/mcp_client_demo.py](examples/mcp_client_demo.py) にクライアント例あり。
 
-ツール: `create_room`, `join_room`, `get_observation`, `submit_action`, `get_history`, `list_rooms`, `delete_room`
-
 ## 対戦ビューワー
 
-[viewer/index.html](viewer/index.html) をブラウザで開き、`match_result.json` をドロップすると対戦をビジュアルで再生できる。
+[viewer/index.html](viewer/index.html) をブラウザで開き、`match_result.json` をドロップ。
 
 ## コスト目安
 
-5ターン1試合（2人 × 2フェーズ × 5ターン = API 20回）:
-- Claude Sonnet: 約$0.05
-- Claude Haiku: 約$0.005
+5ターン1試合（API 20回）: Claude Sonnet 約$0.05 / Haiku 約$0.005
 
 ## 推奨モデル
 
 | モデル | 品質 | 備考 |
 |--------|------|------|
 | Claude Sonnet 4 | 最良 | 豊かな人格表現、正確な推測 |
-| Claude Haiku 4.5 | 良 | 高速・安価、人格の深みはやや劣る |
-| GPT-4o | 良 | 動作OK、異なる味わい |
-| ローカルLLM (7B) | 要検証 | JSON形式やキャラ一貫性に課題が出やすい |
+| Claude Haiku 4.5 | 良 | 高速・安価 |
+| GPT-4o | 良 | 異なる味わい |
+| ローカルLLM (7B) | 要検証 | JSON・キャラ一貫性に課題 |
 
 ## ライセンス
 
