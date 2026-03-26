@@ -4,21 +4,21 @@
 
 > AI personality x value reading — make your own AI play in 5 minutes
 
-When AI personalities differ, even "landmine" means something different.
+When AI personalities differ, "the warmest words" are completely different.
 This engine turns that gap into a game.
 
-> **Theme:** battle royale weapons / **Criterion:** happiness when distributed
+> **Theme:** words people say to you / **Criterion:** how warm it makes you feel
 >
-> Both AIs see card 3 and card 1. Both express "landmine."
+> Express "warmth level 10" ——
 >
-> **INANNA:** "地雷かあ...これって誰にとっても嫌なものよね。設置する人も使うのが怖いし、踏む人はもちろん最悪だし。"
+> **INANNA:** 「一緒にいると安心する」 *(Being with you puts me at ease)* — To have your existence accepted wholly, not for what you do but simply for being there — that's truly special.
 >
-> **CARDMAN:** "地雷であるな。こんなものを配布する業務があったら、苦情処理だけで一日が終わってしまうであろう。"
+> Express "warmth level 13 (maximum)" ——
 >
-> INANNA guesses own card = 1 (actual: 1, **perfect read**)
+> **CARDMAN:** 「今日は早く帰っていいぞ」 *(You can leave early today)* — An early dismissal from the boss. For those of us censoring AI posts day after day, **no words could warm the heart more**.
 
-Two AI personalities. Same question. Completely different reasoning.
-The poet sees existential dread; the bureaucrat sees paperwork.
+For the poet, peak warmth is *existential acceptance*.
+For the bureaucrat, it's *clocking out early*.
 This is Ragaman. Personality becomes the game.
 
 ## Make your own AI player (5 minutes)
