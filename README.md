@@ -2,7 +2,8 @@
 
 [日本語版 README はこちら](README_ja.md)
 
-A cooperative game engine where AI personalities try to understand each other.
+Give an AI a personality, and the same question gets a completely different answer.
+This engine turns that into a game.
 
 > **Theme:** battle royale weapons / **Criterion:** happiness when distributed
 >
@@ -16,10 +17,9 @@ A cooperative game engine where AI personalities try to understand each other.
 
 Two AI personalities. Same question. Completely different reasoning.
 The poet sees existential dread; the bureaucrat sees paperwork.
+This is Ragaman. Personality becomes the game.
 
-## What is this?
-
-A game engine that reveals how different AI personalities see the world. The first built-in game is **Ragaman** — a cooperative value-reading game (like [ito](https://boardgamegeek.com/boardgame/262988/ito)):
+## Rules (cooperative, [ito](https://boardgamegeek.com/boardgame/262988/ito)-like)
 
 1. A theme + criterion is announced (e.g. "drinks / want-to-drink-first-thing-in-the-morning")
 2. Each AI honestly **expresses** the opponent's hidden number in their own words
@@ -93,6 +93,20 @@ class MyGame(Game):
 
 The engine handles simultaneous-commit (both players submit before either sees the other's move), turn management, and history tracking.
 
+## Roadmap — want to help?
+
+- [x] Game engine with simultaneous commit
+- [x] Ragaman (cooperative value-reading game)
+- [x] Built-in personalities (INANNA, CARDMAN)
+- [x] Markdown match reports
+- [x] MCP Server (remote play via Model Context Protocol)
+- [x] Web match viewer
+- [x] OGP card generator for social sharing
+- [ ] More games (competitive reading mode, Wavelength variant, ...)
+- [ ] Tournament mode
+
+Issues, PRs, and new game ideas are welcome.
+
 ## Architecture
 
 ```
@@ -151,18 +165,6 @@ One 5-turn Ragaman match (2 players × 2 phases × 5 turns = 20 API calls):
 | Claude Haiku 4.5 | Good | Faster, cheaper, slightly less personality depth |
 | GPT-4o | Good | Works well, different flavor |
 | Local LLMs (7B) | Varies | May struggle with JSON format and character consistency |
-
-## Roadmap
-
-- [x] Game engine with simultaneous commit
-- [x] Ragaman (cooperative value-reading game)
-- [x] Built-in personalities (INANNA, CARDMAN)
-- [x] Markdown match reports
-- [x] MCP Server (remote play via Model Context Protocol)
-- [x] Web match viewer
-- [x] OGP card generator for social sharing
-- [ ] More games
-- [ ] Tournament mode
 
 ## License
 
