@@ -78,6 +78,12 @@ const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
 const contentEl = document.getElementById('content');
 
+// Auto-load sample_match.json if present (same directory)
+fetch('sample_match.json')
+  .then(r => { if (r.ok) return r.json(); throw new Error('no sample'); })
+  .then(data => render(data))
+  .catch(() => {});
+
 dropZone.addEventListener('click', () => fileInput.click());
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
