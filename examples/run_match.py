@@ -24,11 +24,12 @@ from arena.players.cardman import CardmanPlayer
 from arena.formatter import format_match_markdown
 
 
-async def run_match(theme: str, criterion: str, turns: int) -> list[dict]:
+async def run_match(theme: str, criterion: str, turns: int,
+                    personality_dir: str | None = None) -> list[dict]:
     game = Ragaman()
     room = Room(game, {"theme": theme, "criterion": criterion, "turns": turns})
 
-    p1 = InannaPlayer()
+    p1 = InannaPlayer(personality_dir=personality_dir)
     p2 = CardmanPlayer()
 
     room.join(p1.name)
@@ -95,13 +96,18 @@ def main() -> None:
         help="Ranking criterion",
     )
     parser.add_argument("--turns", type=int, default=5)
+    parser.add_argument("--personality-dir",
+                        help="Path to INANNA personality dir (self.md, character_signature.txt)")
     args = parser.parse_args()
 
+    if args.personality_dir:
+        print(f"Loading INANNA personality from: {args.personality_dir}")
     print(f"=== Ragaman: INANNA vs CARDMAN ===")
     print(f"Theme: {args.theme} / Criterion: {args.criterion}")
     print(f"Turns: {args.turns}\n")
 
-    history = asyncio.run(run_match(args.theme, args.criterion, args.turns))
+    history = asyncio.run(run_match(args.theme, args.criterion, args.turns,
+                                    args.personality_dir))
 
     # Save raw JSON
     json_out = Path("match_result.json")
