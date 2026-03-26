@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Persona Arena — Match Viewer</title>
+<style>
+  :root {
+    --bg: #0d1117; --card: #161b22; --border: #30363d;
+    --text: #e6edf3; --dim: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --red: #f85149; --yellow: #d29922;
+    --p1: #da7cff; --p2: #79c0ff;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 20px; max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 1.4em; margin-bottom: 4px; }
+  .meta { color: var(--dim); margin-bottom: 24px; font-size: 0.9em; }
+
+  .turn { background: var(--card); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 20px; overflow: hidden; }
+  .turn-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .turn-header h2 { font-size: 1em; }
+  .ragaman-badge { background: var(--yellow); color: #000; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 0.85em; }
+
+  .phase { padding: 16px; border-bottom: 1px solid var(--border); }
+  .phase:last-child { border-bottom: none; }
+  .phase-label { font-size: 0.75em; text-transform: uppercase; color: var(--dim); letter-spacing: 1px; margin-bottom: 8px; }
+
+  .player-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px; }
+  .player-card { background: rgba(255,255,255,0.03); border-radius: 8px; padding: 12px; }
+  .player-name { font-weight: bold; font-size: 0.85em; margin-bottom: 6px; }
+  .player-name.p1 { color: var(--p1); }
+  .player-name.p2 { color: var(--p2); }
+
+  .expression { font-size: 1.2em; font-weight: bold; margin-bottom: 4px; }
+  .spoken { font-style: italic; color: var(--dim); font-size: 0.9em; line-height: 1.4; margin-bottom: 4px; }
+  .reasoning { font-size: 0.8em; color: var(--dim); }
+
+  .guess-num { font-size: 1.4em; font-weight: bold; }
+  .error { font-size: 0.85em; margin-left: 4px; }
+  .error-good { color: var(--green); }
+  .error-ok { color: var(--yellow); }
+  .error-bad { color: var(--red); }
+
+  .ragaman-call { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 0.8em; font-weight: bold; margin-top: 4px; }
+  .ragaman-correct { background: var(--green); color: #000; }
+  .ragaman-wrong { background: var(--red); color: #fff; }
+
+  .scores { text-align: center; padding: 8px; font-size: 0.9em; color: var(--dim); }
+
+  .final { background: var(--card); border: 1px solid var(--accent); border-radius: 12px; padding: 20px; text-align: center; margin-top: 20px; }
+  .final h2 { font-size: 1.3em; margin-bottom: 8px; }
+  .winner-text { font-size: 1.1em; color: var(--accent); }
+
+  .drop-zone { border: 2px dashed var(--border); border-radius: 12px; padding: 40px; text-align: center; color: var(--dim); margin-bottom: 20px; cursor: pointer; transition: border-color 0.2s; }
+  .drop-zone:hover, .drop-zone.drag-over { border-color: var(--accent); color: var(--accent); }
+  .drop-zone input { display: none; }
+
+  .interp { background: rgba(255,255,255,0.03); border-left: 3px solid var(--accent); padding: 8px 12px; margin-bottom: 16px; font-size: 0.9em; border-radius: 0 8px 8px 0; }
+  .interp-label { font-size: 0.75em; color: var(--dim); }
+</style>
+</head>
+<body>
+<h1>AI Persona Arena</h1>
+<p class="meta">Match Viewer</p>
+
+<div class="drop-zone" id="dropZone">
+  Drop <code>match_result.json</code> here or click to load
+  <input type="file" id="fileInput" accept=".json">
+</div>
+
+<div id="content"></div>
+
+<script>
+/* All user-derived text is set via textContent (never innerHTML with raw data).
+   DOM structure is built programmatically with createElement. */
+
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const contentEl = document.getElementById('content');
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); loadFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); });
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try { render(JSON.parse(e.target.result)); }
+    catch(err) { contentEl.textContent = 'Error: ' + err.message; }
+  };
+  reader.readAsText(file);
+}
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = String(text);
+  return e;
+}
+
+function render(history) {
+  contentEl.replaceChildren();
+  if (!history.length) { contentEl.textContent = 'No turns found.'; return; }
+  const players = Object.keys(history[0].cards);
+  const [p1, p2] = players;
+
+  // Interpretations from turn 1
+  const exprs0 = history[0].expressions;
+  for (const pid of players) {
+    const interp = exprs0[pid]?.interpretation;
+    if (interp) {
+      const div = el('div', 'interp');
+      const label = el('span', 'interp-label');
+      const nameSpan = el('span', 'player-name ' + (pid === p1 ? 'p1' : 'p2'), pid);
+      label.appendChild(nameSpan);
+      label.appendChild(document.createTextNode("'s interpretation:"));
+      div.appendChild(label);
+      div.appendChild(el('br'));
+      div.appendChild(document.createTextNode(interp));
+      contentEl.appendChild(div);
+    }
+  }
+
+  for (const h of history) {
+    contentEl.appendChild(renderTurn(h, p1, p2));
+  }
+
+  // Final
+  const last = history[history.length - 1];
+  const scores = last.scores_after;
+  const winner = Object.entries(scores).sort((a,b) => b[1]-a[1])[0][0];
+  const fin = el('div', 'final');
+  fin.appendChild(el('h2', null, 'Final Result'));
+  for (const pid of players) {
+    const s = el('span', 'player-name ' + (pid === p1 ? 'p1' : 'p2'),
+      pid + ': ' + scores[pid] + (pid === winner ? ' \u{1F451}' : ''));
+    fin.appendChild(s);
+    fin.appendChild(document.createTextNode('  '));
+  }
+  fin.appendChild(el('br'));
+  fin.appendChild(el('span', 'winner-text', winner + ' wins!'));
+  contentEl.appendChild(fin);
+
+  dropZone.style.display = 'none';
+}
+
+function renderTurn(h, p1, p2) {
+  const turn = el('div', 'turn');
+
+  // Header
+  const header = el('div', 'turn-header');
+  header.appendChild(el('h2', null, 'Turn ' + h.turn));
+  const headerRight = el('div');
+  headerRight.appendChild(document.createTextNode('Sum: ' + h.actual_sum + ' '));
+  if (h.is_ragaman) headerRight.appendChild(el('span', 'ragaman-badge', 'RAGAMAN!'));
+  header.appendChild(headerRight);
+  turn.appendChild(header);
+
+  // Express phase
+  const exPhase = el('div', 'phase');
+  exPhase.appendChild(el('div', 'phase-label', 'Express'));
+  const exRow = el('div', 'player-row');
+  for (const pid of [p1, p2]) {
+    const cls = pid === p1 ? 'p1' : 'p2';
+    const opp = pid === p1 ? p2 : p1;
+    const expr = h.expressions[pid] || {};
+    const card = el('div', 'player-card');
+    const name = el('div', 'player-name ' + cls);
+    name.appendChild(document.createTextNode(pid + ' '));
+    const seesSpan = document.createElement('span');
+    seesSpan.style.cssText = 'color:var(--dim);font-weight:normal';
+    seesSpan.textContent = 'sees ' + h.cards[opp];
+    name.appendChild(seesSpan);
+    card.appendChild(name);
+    card.appendChild(el('div', 'expression', expr.expression || '?'));
+    if (expr.spoken_line) card.appendChild(el('div', 'spoken', '"' + expr.spoken_line + '"'));
+    if (expr.expression_reasoning) card.appendChild(el('div', 'reasoning', expr.expression_reasoning));
+    exRow.appendChild(card);
+  }
+  exPhase.appendChild(exRow);
+  turn.appendChild(exPhase);
+
+  // Guess phase
+  const guPhase = el('div', 'phase');
+  guPhase.appendChild(el('div', 'phase-label', 'Guess'));
+  const guRow = el('div', 'player-row');
+  for (const pid of [p1, p2]) {
+    const cls = pid === p1 ? 'p1' : 'p2';
+    const guess = h.guesses[pid] || {};
+    const err = h.errors[pid];
+    const errCls = err === 0 ? 'error-good' : err <= 2 ? 'error-ok' : 'error-bad';
+    const card = el('div', 'player-card');
+    const name = el('div', 'player-name ' + cls);
+    name.appendChild(document.createTextNode(pid + ' '));
+    const cardSpan = document.createElement('span');
+    cardSpan.style.cssText = 'color:var(--dim);font-weight:normal';
+    cardSpan.textContent = 'card: ' + h.cards[pid];
+    name.appendChild(cardSpan);
+    card.appendChild(name);
+    const guessLine = el('div');
+    guessLine.appendChild(el('span', 'guess-num', guess.my_guess ?? '?'));
+    guessLine.appendChild(el('span', 'error ' + errCls, '\u00B1' + err));
+    card.appendChild(guessLine);
+    if (guess.guess_reasoning) card.appendChild(el('div', 'reasoning', guess.guess_reasoning));
+    if (guess.opponent_scale_reading) {
+      const sr = el('div', 'reasoning');
+      sr.style.marginTop = '4px';
+      sr.textContent = 'Scale reading: ' + guess.opponent_scale_reading;
+      card.appendChild(sr);
+    }
+    if (guess.ragaman) {
+      const rgCorrect = h.is_ragaman;
+      const badge = el('div', 'ragaman-call ' + (rgCorrect ? 'ragaman-correct' : 'ragaman-wrong'),
+        'RAGAMAN! ' + (rgCorrect ? '\u2705' : '\u274C'));
+      card.appendChild(badge);
+    }
+    guRow.appendChild(card);
+  }
+  guPhase.appendChild(guRow);
+  turn.appendChild(guPhase);
+
+  // Scores
+  const scoresDiv = el('div', 'scores');
+  scoresDiv.textContent = 'Scores: ' + Object.entries(h.scores_after).map(([k,v]) => k + ': ' + v).join(' / ');
+  turn.appendChild(scoresDiv);
+
+  return turn;
+}
+</script>
+</body>
+</html>

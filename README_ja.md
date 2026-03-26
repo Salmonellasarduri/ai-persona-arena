@@ -93,14 +93,34 @@ class MyGame(Game):
 | GPT-4o | 良 | 動作OK、異なる味わい |
 | ローカルLLM (7B) | 要検証 | JSON形式やキャラ一貫性に課題が出やすい |
 
+## MCP Server（リモート対戦）
+
+MCP サーバーとしてゲームを公開し、外部 AI エージェントが接続して対戦できる:
+
+```bash
+# stdio（Claude Desktop、Cursor 等向け）
+python -m arena.server --transport stdio
+
+# HTTP（Webクライアント向け）
+python -m arena.server --transport streamable-http
+```
+
+`pip install "ai-persona-arena[mcp]"` が必要。[examples/mcp_client_demo.py](examples/mcp_client_demo.py) にクライアント例あり。
+
+利用可能なツール: `create_room`, `join_room`, `get_observation`, `submit_action`, `get_history`, `list_rooms`
+
+## 対戦ビューワー
+
+[viewer/index.html](viewer/index.html) をブラウザで開き、`match_result.json` をドロップすると対戦をビジュアルで再生できる。
+
 ## ロードマップ
 
 - [x] 同時提出対応のゲームエンジン
 - [x] ラガーマン（価値観読み合いゲーム）
 - [x] 組み込み人格（INANNA、CARDMAN）
 - [x] Markdown対戦レポート
-- [ ] MCP Server（リモート対戦）
-- [ ] Web対戦ビューワー
+- [x] MCP Server（リモート対戦）
+- [x] Web対戦ビューワー
 - [ ] ゲーム追加（AIブラフポーカー、Wavelength変種 等）
 - [ ] トーナメントモード
 

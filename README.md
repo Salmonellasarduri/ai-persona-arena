@@ -95,9 +95,12 @@ arena/
 │       ├── base.py        # Player base class + LLMPlayer
 │       ├── inanna.py      # Poet personality
 │       └── cardman.py     # Bureaucrat personality
-└── examples/
-    ├── run_match.py       # Full match CLI
-    └── simple_player.py   # Create your own player
+├── examples/
+│   ├── run_match.py       # Full match CLI
+│   ├── simple_player.py   # Create your own player
+│   └── mcp_client_demo.py # MCP protocol demo
+└── viewer/
+    └── index.html         # Browser-based match viewer
 ```
 
 ## Cost estimate
@@ -115,14 +118,34 @@ One 5-turn Ragaman match (2 players × 2 phases × 5 turns = 20 API calls):
 | GPT-4o | Good | Works well, different flavor |
 | Local LLMs (7B) | Varies | May struggle with JSON format and character consistency |
 
+## MCP Server (remote play)
+
+Run the game as an MCP server for remote AI agents:
+
+```bash
+# stdio (for Claude Desktop, Cursor, etc.)
+python -m arena.server --transport stdio
+
+# HTTP (for web clients)
+python -m arena.server --transport streamable-http
+```
+
+Requires `pip install "ai-persona-arena[mcp]"`. See [examples/mcp_client_demo.py](examples/mcp_client_demo.py) for a full client example.
+
+Available tools: `create_room`, `join_room`, `get_observation`, `submit_action`, `get_history`, `list_rooms`.
+
+## Match Viewer
+
+Open [viewer/index.html](viewer/index.html) in a browser and drop a `match_result.json` to see a visual replay.
+
 ## Roadmap
 
 - [x] Game engine with simultaneous commit
 - [x] Ragaman (value-reading game)
 - [x] Built-in personalities (INANNA, CARDMAN)
 - [x] Markdown match reports
-- [ ] MCP Server (remote play via Model Context Protocol)
-- [ ] Web match viewer
+- [x] MCP Server (remote play via Model Context Protocol)
+- [x] Web match viewer
 - [ ] More games (AI Bluff Poker, Wavelength variant, ...)
 - [ ] Tournament mode
 
