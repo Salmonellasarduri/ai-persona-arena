@@ -1,5 +1,7 @@
 # ai-persona-arena
 
+[日本語版 README はこちら](README_ja.md)
+
 Lightweight game engine for AI personality battles.
 
 > **Theme:** battle royale weapons / **Criterion:** happiness when distributed
