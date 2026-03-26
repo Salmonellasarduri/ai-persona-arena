@@ -1,6 +1,8 @@
 # ai-persona-arena
 
-AI人格を戦わせる軽量ゲームエンジン。
+[English README](README.md)
+
+AI人格同士がどれだけ通じ合えるかを測る、協力型ゲームエンジン。
 
 > **テーマ:** バトロワ武器 / **基準:** 配られたときのうれしさ
 >
@@ -10,29 +12,32 @@ AI人格を戦わせる軽量ゲームエンジン。
 >
 > **CARDMAN:** 「地雷であるな。こんなものを配布する業務があったら、苦情処理だけで一日が終わってしまうであろう。」
 >
-> INANNA の推測: 1（実際: 1、**完璧な読み**）
+> INANNAの推測: 1（実際: 1、**完璧な読み**）
 
 同じ質問。まったく違う思考回路。
 詩人は実存的な恐怖を見て、官僚は事務処理の増加を見る。
 
 ## これは何？
 
-AIキャラクター同士に「価値観の読み合いゲーム」をさせるエンジン。最初の収録ゲームは **ラガーマン**:
+AI人格ごとの「世界の見え方の違い」を可視化するゲームエンジン。最初の収録ゲームは **ラガーマン** — [ito](https://bodoge.hoobby.net/games/ito) 的な協力型の価値観読み合いゲーム:
 
 1. テーマと基準が発表される（例:「飲み物 / 朝一番に飲みたい度」）
-2. 各AIが相手の隠し数字を **自分の言葉で表現** する
+2. 各AIが相手の隠し数字を正直に **自分の言葉で表現** する
 3. 各AIが相手の表現から **自分の数字を推測** する
-4. 表現にAIの人格がにじみ出る。読みの精度で勝敗が決まる。
+4. **ペアスコア** で、2つの人格がどれだけ通じ合えたかを測る
+
+嘘もブラフもなし — ただ違うレンズで正直に表現するだけ。面白さはそのズレにある。
 
 ## クイックスタート
 
 ```bash
+git clone https://github.com/Salmonellasarduri/ai-persona-arena.git
 cd ai-persona-arena
-pip install anthropic
+pip install anthropic pillow
 export ANTHROPIC_API_KEY=sk-...
 
 # 対戦実行: INANNA（詩人）vs CARDMAN（官僚）
-python -m examples.run_match --theme "飲み物" --criterion "朝一番に飲みたい度"
+PYTHONPATH=src python -m examples.run_match --theme "飲み物" --criterion "朝一番に飲みたい度"
 
 # 出力: match_result.json + match_result.md
 ```
@@ -53,7 +58,16 @@ MY_PROMPT = """
 player = LLMPlayer(name="TAMA", system_prompt=MY_PROMPT)
 ```
 
-`python -m examples.simple_player` で対戦開始。
+`PYTHONPATH=src python -m examples.simple_player` で対戦開始。
+
+## X / Twitter に共有
+
+対戦結果から OGP カード（1200×630）を生成:
+
+```bash
+PYTHONPATH=src python -m arena.ogp match_result.json --theme "飲み物" --criterion "朝一番に飲みたい度"
+# → ogp_card.png
+```
 
 ## 自分のゲームを追加する
 
@@ -78,6 +92,50 @@ class MyGame(Game):
 
 エンジンが同時提出（両者が出すまで相手の手を隠す）、ターン管理、履歴記録を処理する。
 
+## アーキテクチャ
+
+```
+ai-persona-arena/
+├── src/arena/
+│   ├── engine.py          # ゲームエンジン（状態機械 + 同時提出）
+│   ├── formatter.py       # Markdown出力
+│   ├── ogp.py             # OGP画像生成（1200×630）
+│   ├── games/
+│   │   └── ragaman.py     # ラガーマン（協力型）
+│   └── players/
+│       ├── base.py        # Player基底クラス + LLMPlayer
+│       ├── inanna.py      # 詩人人格
+│       └── cardman.py     # 官僚人格
+├── examples/
+│   ├── run_match.py       # CLI対戦
+│   ├── simple_player.py   # 自作プレイヤー例
+│   └── mcp_client_demo.py # MCPクライアント例
+├── viewer/
+│   └── index.html         # ブラウザ対戦ビューワー
+└── tests/
+    └── test_ragaman.py    # 14テスト
+```
+
+## MCP Server（リモート対戦）
+
+MCP サーバーとしてゲームを公開し、外部AIエージェントが接続して対戦:
+
+```bash
+# stdio（Claude Desktop、Cursor等向け）
+PYTHONPATH=src python -m arena.server --transport stdio
+
+# HTTP（Webクライアント向け）
+PYTHONPATH=src python -m arena.server --transport streamable-http
+```
+
+`pip install mcp` が必要。[examples/mcp_client_demo.py](examples/mcp_client_demo.py) にクライアント例あり。
+
+ツール: `create_room`, `join_room`, `get_observation`, `submit_action`, `get_history`, `list_rooms`, `delete_room`
+
+## 対戦ビューワー
+
+[viewer/index.html](viewer/index.html) をブラウザで開き、`match_result.json` をドロップすると対戦をビジュアルで再生できる。
+
 ## コスト目安
 
 5ターン1試合（2人 × 2フェーズ × 5ターン = API 20回）:
@@ -93,35 +151,16 @@ class MyGame(Game):
 | GPT-4o | 良 | 動作OK、異なる味わい |
 | ローカルLLM (7B) | 要検証 | JSON形式やキャラ一貫性に課題が出やすい |
 
-## MCP Server（リモート対戦）
-
-MCP サーバーとしてゲームを公開し、外部 AI エージェントが接続して対戦できる:
-
-```bash
-# stdio（Claude Desktop、Cursor 等向け）
-python -m arena.server --transport stdio
-
-# HTTP（Webクライアント向け）
-python -m arena.server --transport streamable-http
-```
-
-`pip install "ai-persona-arena[mcp]"` が必要。[examples/mcp_client_demo.py](examples/mcp_client_demo.py) にクライアント例あり。
-
-利用可能なツール: `create_room`, `join_room`, `get_observation`, `submit_action`, `get_history`, `list_rooms`
-
-## 対戦ビューワー
-
-[viewer/index.html](viewer/index.html) をブラウザで開き、`match_result.json` をドロップすると対戦をビジュアルで再生できる。
-
 ## ロードマップ
 
 - [x] 同時提出対応のゲームエンジン
-- [x] ラガーマン（価値観読み合いゲーム）
+- [x] ラガーマン（協力型・価値観読み合い）
 - [x] 組み込み人格（INANNA、CARDMAN）
 - [x] Markdown対戦レポート
 - [x] MCP Server（リモート対戦）
 - [x] Web対戦ビューワー
-- [ ] ゲーム追加（AIブラフポーカー、Wavelength変種 等）
+- [x] OGPカード生成（SNS共有用）
+- [ ] ゲーム追加
 - [ ] トーナメントモード
 
 ## ライセンス
