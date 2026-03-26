@@ -83,18 +83,17 @@ def format_match_markdown(
                     w(f"- Ragaman call: {rg_reason} {correct}")
                 w("")
 
-        w(f"**Scores:** {h['scores_after']}\n")
+        ts = h.get('turn_score', 0)
+        ps = h.get('pair_score_after', 0)
+        w(f"**Turn score: {ts} | Pair total: {ps}**\n")
 
     # Final
     if history:
-        final = history[-1]["scores_after"]
-        winner = max(final, key=final.get)
+        last = history[-1]
+        max_possible = last.get("turn", 5) * 10  # 5pts per player per turn
+        pair_score = last.get("pair_score_after", 0)
         w(f"---\n## Final Result\n")
-        w(f"| Player | Score |")
-        w(f"|--------|-------|")
-        for pid in player_names:
-            marker = " 👑" if pid == winner else ""
-            w(f"| {pid} | {final[pid]}{marker} |")
-        w(f"\n**Winner: {winner}**")
+        w(f"**Pair Score: {pair_score} / {max_possible}**\n")
+        w(f"How well did {player_names[0]} and {player_names[1]} understand each other?")
 
     return "\n".join(lines)

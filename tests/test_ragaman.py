@@ -88,7 +88,7 @@ class TestScoring:
         room.submit("alice", {"my_guess": guess_a, "ragaman": ragaman_a})
         room.submit("bob", {"my_guess": guess_b, "ragaman": ragaman_b})
 
-    def test_perfect_guess_scores_5(self):
+    def test_perfect_guess_scores_10_pair(self):
         room = make_room(turns=1)
         cards = room.state["cards"]
         alice_card = cards["alice"]
@@ -97,28 +97,25 @@ class TestScoring:
         history = room.get_history()
         assert history[0]["errors"]["alice"] == 0
         assert history[0]["errors"]["bob"] == 0
-        assert history[0]["scores_after"]["alice"] == 5
-        assert history[0]["scores_after"]["bob"] == 5
+        # Pair score: 5 + 5 = 10
+        assert history[0]["turn_score"] == 10
+        assert history[0]["pair_score_after"] == 10
 
     def test_ragaman_bonus_on_14(self):
         room = make_room(turns=1)
-        # Force cards to sum to 14
         room.state["cards"] = {"alice": 6, "bob": 8}
         self._play_turn(room, 6, 8, ragaman_a=True, ragaman_b=False)
         history = room.get_history()
-        # alice: 5 (perfect) + 3 (ragaman bonus) = 8
-        assert history[0]["scores_after"]["alice"] == 8
-        # bob: 5 (perfect) + 0 (no call) = 5
-        assert history[0]["scores_after"]["bob"] == 5
+        # Pair: 5+5 (perfect) + 2 (alice ragaman) = 12
+        assert history[0]["turn_score"] == 12
 
     def test_ragaman_penalty_on_wrong(self):
         room = make_room(turns=1)
-        # Force cards to NOT sum to 14
         room.state["cards"] = {"alice": 5, "bob": 5}
         self._play_turn(room, 5, 5, ragaman_a=True, ragaman_b=False)
         history = room.get_history()
-        # alice: 5 (perfect) - 2 (wrong ragaman) = 3
-        assert history[0]["scores_after"]["alice"] == 3
+        # Pair: 5+5 (perfect) - 1 (wrong ragaman) = 9
+        assert history[0]["turn_score"] == 9
 
     def test_game_ends_after_max_turns(self):
         room = make_room(turns=2)

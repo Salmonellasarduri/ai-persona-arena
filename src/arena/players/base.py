@@ -137,15 +137,29 @@ Reply in JSON:
     # -- LLM call --
 
     async def _call(self, prompt: str) -> dict[str, Any]:
-        resp = await self._client.messages.create(
-            model=self.model,
-            max_tokens=1000,
-            system=self.system_prompt,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=self.temperature,
-        )
-        text = resp.content[0].text
-        return self._parse_json(text)
+        for attempt in range(2):
+            resp = await self._client.messages.create(
+                model=self.model,
+                max_tokens=1000,
+                system=self.system_prompt,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=self.temperature,
+            )
+            text = resp.content[0].text
+            result = self._parse_json(text)
+            if "parse_error" not in result:
+                # Enforce spoken_line length limit
+                if "spoken_line" in result:
+                    result["spoken_line"] = result["spoken_line"][:100]
+                if "expression" in result:
+                    result["expression"] = result["expression"][:50]
+                return result
+            if attempt == 0:
+                continue
+        # Fallback: return minimal valid action
+        return {"expression": "...", "spoken_line": "...",
+                "my_guess": 7, "ragaman": False,
+                "parse_error": True, "raw_text": text}
 
     @staticmethod
     def _parse_json(text: str) -> dict[str, Any]:

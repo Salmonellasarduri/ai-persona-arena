@@ -6,7 +6,8 @@ Rules (3 lines):
    then *guesses* their own number from the opponent's expression.
 3. Your personality leaks through your expression. Precision wins.
 
-If both cards sum to 14 and a player calls "Ragaman!", they score a bonus.
+If both cards sum to 14 and a player calls "Ragaman!", the pair scores a bonus.
+Cooperative game: the pair's combined accuracy is the score.
 """
 
 from __future__ import annotations
@@ -34,12 +35,12 @@ class Ragaman(Game):
             "expressions": {},      # {player_id: {expression, spoken_line, ...}}
             "guesses": {},          # {player_id: {my_guess, reasoning, ragaman, ...}}
             "history": [],
-            "scores": {},
+            "pair_score": 0,
         }
 
     def on_all_joined(self, state: dict, players: list[str]) -> dict:
         state["players"] = list(players)
-        state["scores"] = {p: 0 for p in players}
+        state["pair_score"] = 0
         return self._deal(state)
 
     def get_observation(self, state: dict, player_id: str) -> dict:
@@ -69,7 +70,7 @@ class Ragaman(Game):
             obs["cards"] = dict(state["cards"])
 
         if state["phase"] == "final":
-            obs["scores"] = dict(state["scores"])
+            obs["pair_score"] = state["pair_score"]
 
         return obs
 
@@ -112,25 +113,28 @@ class Ragaman(Game):
         g1 = state["guesses"][p1]
         g2 = state["guesses"][p2]
 
-        # Scoring
+        # Individual errors
         err1 = abs(g1.get("my_guess", 0) - c1)
         err2 = abs(g2.get("my_guess", 0) - c2)
-        state["scores"][p1] += max(0, 5 - err1)
-        state["scores"][p2] += max(0, 5 - err2)
 
-        # Ragaman bonus
+        # Cooperative scoring: pair accuracy
+        turn_score = max(0, 5 - err1) + max(0, 5 - err2)
+
+        # Ragaman bonus/penalty (cooperative: +2/-1 per caller)
         called1 = g1.get("ragaman", False)
         called2 = g2.get("ragaman", False)
         if is_ragaman:
             if called1:
-                state["scores"][p1] += 3
+                turn_score += 2
             if called2:
-                state["scores"][p2] += 3
+                turn_score += 2
         else:
             if called1:
-                state["scores"][p1] -= 2
+                turn_score -= 1
             if called2:
-                state["scores"][p2] -= 2
+                turn_score -= 1
+
+        state["pair_score"] += turn_score
 
         record = {
             "turn": state["turn"],
@@ -140,7 +144,8 @@ class Ragaman(Game):
             "actual_sum": actual_sum,
             "is_ragaman": is_ragaman,
             "errors": {p1: err1, p2: err2},
-            "scores_after": dict(state["scores"]),
+            "turn_score": turn_score,
+            "pair_score_after": state["pair_score"],
         }
         state["history"].append(record)
 

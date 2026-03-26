@@ -72,14 +72,15 @@ def print_summary(history: list[dict]) -> None:
         players = list(cards.keys())
         p1, p2 = players
         rg = " RAGAMAN!" if h["is_ragaman"] else ""
+        ts = h.get("turn_score", 0)
         print(f"  Turn {h['turn']}: "
               f"{p1}={cards[p1]}(err{errs[p1]}) "
               f"{p2}={cards[p2]}(err{errs[p2]}) "
-              f"sum={h['actual_sum']}{rg}")
+              f"sum={h['actual_sum']}{rg} +{ts}pts")
     if history:
-        final = history[-1]["scores_after"]
-        winner = max(final, key=final.get)
-        print(f"\n  Final: {final} -> {winner} wins!")
+        pair_score = history[-1].get("pair_score_after", 0)
+        max_possible = len(history) * 10
+        print(f"\n  Pair score: {pair_score}/{max_possible}")
 
 
 def main() -> None:

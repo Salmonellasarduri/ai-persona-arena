@@ -10,7 +10,9 @@ External AI agents connect via MCP and play using tools:
 
 from __future__ import annotations
 
+import asyncio
 import json
+import time
 import uuid
 from typing import Any
 
@@ -29,6 +31,9 @@ GAMES = {
 
 _rooms: dict[str, Room] = {}
 _room_configs: dict[str, dict] = {}
+_room_locks: dict[str, asyncio.Lock] = {}
+_room_last_activity: dict[str, float] = {}
+_ROOM_TTL_SECONDS = 600  # 10 minutes
 
 # ── MCP Server ──
 
@@ -39,7 +44,7 @@ mcp = FastMCP(
         "Create a room, join with your personality, then express and guess "
         "each turn. Both players must submit before the round advances."
     ),
-    host="0.0.0.0",
+    host="127.0.0.1",
     port=8080,
 )
 
@@ -70,6 +75,10 @@ def create_room(
     room_id = uuid.uuid4().hex[:8]
     _rooms[room_id] = Room(game, config)
     _room_configs[room_id] = {"game_type": game_type, **config}
+    _room_locks[room_id] = asyncio.Lock()
+    _room_last_activity[room_id] = time.monotonic()
+
+    _cleanup_expired_rooms()
 
     return {"room_id": room_id, "config": _room_configs[room_id]}
 
@@ -128,7 +137,7 @@ def get_observation(room_id: str, player_id: str) -> dict[str, Any]:
 
 
 @mcp.tool()
-def submit_action(room_id: str, player_id: str, action: str) -> dict[str, Any]:
+async def submit_action(room_id: str, player_id: str, action: str) -> dict[str, Any]:
     """Submit your action for the current phase.
 
     In the EXPRESS phase, submit:
@@ -154,10 +163,16 @@ def submit_action(room_id: str, player_id: str, action: str) -> dict[str, Any]:
     except json.JSONDecodeError:
         return {"error": "Invalid JSON in action"}
 
-    try:
-        result = room.submit(player_id, parsed)
-    except RuntimeError as e:
-        return {"error": str(e)}
+    lock = _room_locks.get(room_id)
+    if not lock:
+        return {"error": "Room lock not found"}
+
+    async with lock:
+        try:
+            result = room.submit(player_id, parsed)
+        except RuntimeError as e:
+            return {"error": str(e)}
+        _room_last_activity[room_id] = time.monotonic()
 
     return result
 
@@ -180,7 +195,7 @@ def get_history(room_id: str) -> dict[str, Any]:
         "history": room.get_history(),
         "phase": room.state.get("phase", ""),
         "is_done": room.is_done(),
-        "scores": room.state.get("scores", {}),
+        "pair_score": room.state.get("pair_score", 0),
     }
 
 
@@ -200,6 +215,35 @@ def list_rooms() -> dict[str, Any]:
             "is_done": room.is_done(),
         })
     return {"rooms": result}
+
+
+@mcp.tool()
+def delete_room(room_id: str) -> dict[str, Any]:
+    """Delete a game room and free its resources.
+
+    Args:
+        room_id: Room ID to delete
+    """
+    if room_id not in _rooms:
+        return {"error": f"Room {room_id} not found"}
+    del _rooms[room_id]
+    _room_configs.pop(room_id, None)
+    _room_locks.pop(room_id, None)
+    _room_last_activity.pop(room_id, None)
+    return {"deleted": room_id}
+
+
+def _cleanup_expired_rooms() -> None:
+    now = time.monotonic()
+    expired = [
+        rid for rid, last in _room_last_activity.items()
+        if now - last > _ROOM_TTL_SECONDS
+    ]
+    for rid in expired:
+        _rooms.pop(rid, None)
+        _room_configs.pop(rid, None)
+        _room_locks.pop(rid, None)
+        _room_last_activity.pop(rid, None)
 
 
 # ── Entry point ──
