@@ -167,10 +167,30 @@ async def _run_match_in_channel(
 
 # ── Entry point ──
 
+def _load_env():
+    """Load .env from project root if it exists."""
+    env_path = Path(__file__).parent.parent / ".env"
+    if not env_path.exists():
+        return
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key and key not in os.environ:  # don't override explicit env
+            os.environ[key] = value
+
+
 def main():
+    _load_env()
     token = os.environ.get("ARENA_DISCORD_TOKEN")
     if not token:
-        print("Set ARENA_DISCORD_TOKEN environment variable")
+        print("ARENA_DISCORD_TOKEN not set.")
+        print("Create .env in project root with:")
+        print("  ARENA_DISCORD_TOKEN=your_token_here")
+        print("  ARENA_DISCORD_GUILD=your_guild_id_here")
         sys.exit(1)
     bot.run(token, log_handler=None)
 

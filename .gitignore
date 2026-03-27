@@ -8,3 +8,4 @@ match_result.json
 match_result.md
 .venv/
 ogp_card.png
+.env
