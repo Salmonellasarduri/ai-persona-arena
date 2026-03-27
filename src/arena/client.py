@@ -37,13 +37,16 @@ from __future__ import annotations
 import asyncio
 import json
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Awaitable, Callable
 
 from arena.engine import Room
 from arena.games.ragaman import Ragaman
 from arena.players.base import LLMPlayer
 from arena.players.cardman import CardmanPlayer
 from arena.formatter import format_match_markdown
+
+# Type alias for turn callback
+TurnCallback = Callable[[dict, list[str]], Awaitable[None] | None]
 
 
 def play_match(
@@ -147,6 +150,95 @@ async def _play_match_async(
         Path("match_result.md").write_text(md, encoding="utf-8")
 
     return history
+
+
+async def run_match_live(
+    player1_prompt: str | None = None,
+    player2_prompt: str | None = None,
+    player1_name: str = "INANNA",
+    player2_name: str = "CARDMAN",
+    theme: str = "drinks",
+    criterion: str = "want-to-drink-first-thing-in-the-morning level",
+    turns: int = 5,
+    on_turn: TurnCallback | None = None,
+    turn_timeout: float = 60.0,
+) -> list[dict]:
+    """Run a match asynchronously with per-turn callbacks.
+
+    Designed for Discord/web adapters that need to post updates mid-match.
+
+    Args:
+        player1_prompt: System prompt for player 1. None = use InannaPlayer.
+        player2_prompt: System prompt for player 2. None = use CardmanPlayer.
+        player1_name: Display name for player 1.
+        player2_name: Display name for player 2.
+        theme: Game theme.
+        criterion: Ranking criterion.
+        turns: Number of turns.
+        on_turn: Async callback called after each turn resolves.
+            Receives (turn_record: dict, player_names: list[str]).
+        turn_timeout: Seconds before a turn's LLM calls are cancelled.
+
+    Returns:
+        Full match history.
+    """
+    game = Ragaman()
+    room = Room(game, {"theme": theme, "criterion": criterion, "turns": turns})
+
+    if player1_prompt is None:
+        from arena.players.inanna import InannaPlayer
+        p1 = InannaPlayer()
+    else:
+        p1 = LLMPlayer(name=player1_name, system_prompt=player1_prompt)
+
+    if player2_prompt is None:
+        p2 = CardmanPlayer()
+    else:
+        p2 = LLMPlayer(name=player2_name, system_prompt=player2_prompt)
+
+    room.join(p1.name)
+    room.join(p2.name)
+    names = [p1.name, p2.name]
+
+    while not room.is_done():
+        obs1 = room.observe(p1.name)
+        obs2 = room.observe(p2.name)
+        phase = obs1["phase"]
+        turn = obs1["turn"]
+
+        if phase == "express":
+            a1, a2 = await asyncio.wait_for(
+                asyncio.gather(
+                    _get_action(p1, "express", obs1),
+                    _get_action(p2, "express", obs2),
+                ),
+                timeout=turn_timeout,
+            )
+            room.submit(p1.name, a1, turn, phase)
+            room.submit(p2.name, a2, turn, phase)
+
+        elif phase == "guess":
+            obs1 = room.observe(p1.name)
+            obs2 = room.observe(p2.name)
+            a1, a2 = await asyncio.wait_for(
+                asyncio.gather(
+                    _get_action(p1, "guess", obs1),
+                    _get_action(p2, "guess", obs2),
+                ),
+                timeout=turn_timeout,
+            )
+            room.submit(p1.name, a1, turn, phase)
+            room.submit(p2.name, a2, turn, phase)
+
+            # Turn resolved — call back
+            if on_turn:
+                history = room.get_history()
+                latest = history[-1] if history else {}
+                cb = on_turn(latest, names)
+                if asyncio.iscoroutine(cb):
+                    await cb
+
+    return room.get_history()
 
 
 class _CallbackPlayer:
