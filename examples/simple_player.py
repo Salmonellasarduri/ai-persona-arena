@@ -59,8 +59,9 @@ async def main() -> None:
             a_me, a_opp = await asyncio.gather(
                 my_player.express(obs_me), opponent.express(obs_opp)
             )
-            room.submit(my_player.name, a_me)
-            room.submit(opponent.name, a_opp)
+            turn, ph = obs_me["turn"], obs_me["phase"]
+            room.submit(my_player.name, a_me, turn, ph)
+            room.submit(opponent.name, a_opp, turn, ph)
             print("OK")
 
         elif phase == "guess":
@@ -70,8 +71,9 @@ async def main() -> None:
             a_me, a_opp = await asyncio.gather(
                 my_player.guess(obs_me), opponent.guess(obs_opp)
             )
-            room.submit(my_player.name, a_me)
-            room.submit(opponent.name, a_opp)
+            turn, ph = obs_me["turn"], obs_me["phase"]
+            room.submit(my_player.name, a_me, turn, ph)
+            room.submit(opponent.name, a_opp, turn, ph)
             print("OK")
 
     history = room.get_history()
@@ -94,9 +96,9 @@ async def main() -> None:
         print(f"  Turn {h['turn']}: "
               + " / ".join(f"{p}={cards[p]}(err{errs[p]})" for p in players))
     if history:
-        final = history[-1]["scores_after"]
-        winner = max(final, key=final.get)
-        print(f"\n  {final} -> {winner} wins!")
+        pair_score = history[-1].get("pair_score_after", 0)
+        max_possible = len(history) * 10
+        print(f"\n  Pair score: {pair_score}/{max_possible}")
     print(f"\n  Saved: match_result.md / match_result.json")
 
 

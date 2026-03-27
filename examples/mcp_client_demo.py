@@ -1,4 +1,4 @@
-"""Demo: play Ragaman via MCP protocol.
+"""Demo: play Ragaman via MCP protocol (v0.2).
 
 Starts the MCP server as a subprocess and connects as a client.
 Two simulated players take turns via MCP tool calls.
@@ -54,29 +54,36 @@ async def main() -> None:
                 "turns": 1,
             })
             room_id = room["room_id"]
-            print(f"Room created: {room_id}")
+            print(f"Room created: {room_id} (protocol v{room['protocol_version']})")
 
             # Join as two players
-            await call_tool(session, "join_room", {
-                "room_id": room_id, "player_name": "Alice"
+            j1 = await call_tool(session, "join_room", {
+                "room_id": room_id, "player_name": "Alice",
             })
+            token_a = j1["session_token"]
+
             j2 = await call_tool(session, "join_room", {
-                "room_id": room_id, "player_name": "Bob"
+                "room_id": room_id, "player_name": "Bob",
             })
+            token_b = j2["session_token"]
             print(f"Both players joined. Phase: {j2['observation']['phase']}")
 
             # Express phase
             obs_a = await call_tool(session, "get_observation", {
-                "room_id": room_id, "player_id": "Alice"
+                "room_id": room_id, "player_id": "Alice",
             })
             obs_b = await call_tool(session, "get_observation", {
-                "room_id": room_id, "player_id": "Bob"
+                "room_id": room_id, "player_id": "Bob",
             })
             print(f"Alice sees opponent card: {obs_a.get('opponent_card')}")
             print(f"Bob sees opponent card: {obs_b.get('opponent_card')}")
 
+            turn = obs_a["turn"]
+
             await call_tool(session, "submit_action", {
                 "room_id": room_id, "player_id": "Alice",
+                "session_token": token_a,
+                "turn": turn, "phase": "express",
                 "action": json.dumps({
                     "expression": "hamster",
                     "spoken_line": "So fluffy and small!",
@@ -85,6 +92,8 @@ async def main() -> None:
             })
             r = await call_tool(session, "submit_action", {
                 "room_id": room_id, "player_id": "Bob",
+                "session_token": token_b,
+                "turn": turn, "phase": "express",
                 "action": json.dumps({
                     "expression": "cat",
                     "spoken_line": "Elegant and mysterious.",
@@ -96,6 +105,8 @@ async def main() -> None:
             # Guess phase
             await call_tool(session, "submit_action", {
                 "room_id": room_id, "player_id": "Alice",
+                "session_token": token_a,
+                "turn": turn, "phase": "guess",
                 "action": json.dumps({
                     "my_guess": 8,
                     "guess_reasoning": "cat is quite cute",
@@ -105,6 +116,8 @@ async def main() -> None:
             })
             await call_tool(session, "submit_action", {
                 "room_id": room_id, "player_id": "Bob",
+                "session_token": token_b,
+                "turn": turn, "phase": "guess",
                 "action": json.dumps({
                     "my_guess": 5,
                     "guess_reasoning": "hamster is moderately cute",
@@ -115,10 +128,10 @@ async def main() -> None:
 
             # Get results
             history = await call_tool(session, "get_history", {
-                "room_id": room_id
+                "room_id": room_id,
             })
             print(f"\nGame over: {history['is_done']}")
-            print(f"Scores: {history['scores']}")
+            print(f"Pair score: {history['pair_score']}")
             for h in history["history"]:
                 print(f"  Turn {h['turn']}: cards={h['cards']} "
                       f"errors={h['errors']} sum={h['actual_sum']}")

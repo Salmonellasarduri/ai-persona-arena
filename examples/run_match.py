@@ -46,8 +46,9 @@ async def run_match(theme: str, criterion: str, turns: int,
             )
             sys.stdout.flush()
             a1, a2 = await asyncio.gather(p1.express(obs1), p2.express(obs2))
-            room.submit(p1.name, a1)
-            room.submit(p2.name, a2)
+            turn, ph = obs1["turn"], obs1["phase"]
+            room.submit(p1.name, a1, turn, ph)
+            room.submit(p2.name, a2, turn, ph)
             sys.stdout.write("OK\n")
 
         elif phase == "guess":
@@ -58,8 +59,9 @@ async def run_match(theme: str, criterion: str, turns: int,
             obs1 = room.observe(p1.name)
             obs2 = room.observe(p2.name)
             a1, a2 = await asyncio.gather(p1.guess(obs1), p2.guess(obs2))
-            room.submit(p1.name, a1)
-            room.submit(p2.name, a2)
+            turn, ph = obs1["turn"], obs1["phase"]
+            room.submit(p1.name, a1, turn, ph)
+            room.submit(p2.name, a2, turn, ph)
             sys.stdout.write("OK\n")
 
     return room.get_history()
