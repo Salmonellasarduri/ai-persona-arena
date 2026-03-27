@@ -57,8 +57,11 @@ class Ragaman(Game):
             "history": state["history"],
         }
 
-        if state["phase"] in ("express", "guess", "reveal"):
+        if state["phase"] == "express":
             obs["opponent_card"] = state["cards"].get(opp)
+
+        # guess phase: opponent_card is NOT shown.
+        # You must guess from the opponent's expression alone.
 
         if state["phase"] == "guess":
             # After both expressed: show all expressions

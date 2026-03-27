@@ -86,32 +86,37 @@ Rules:
         history = self._format_history(obs.get("history", []))
         exprs = obs.get("expressions", {})
         opp_name = [k for k in exprs if k != self.name]
-        opp_line = ""
+        opp_expr = ""
         if opp_name:
             opp_data = exprs[opp_name[0]]
-            opp_line = opp_data.get("spoken_line", opp_data.get("expression", ""))
+            opp_expr = opp_data.get("expression", "?")
 
         return f"""\
 Ragaman — guess phase.
 Theme: "{obs['theme']}" / Criterion: "{obs['criterion']}"
 Turn {obs['turn']}/{obs['max_turns']}
 
-You can see opponent's card: {obs['opponent_card']}
-Your card is HIDDEN.
+Your card is HIDDEN. You do NOT know what number it is.
 
-Opponent said about YOUR card:
-"{opp_line}"
+Opponent looked at YOUR card and chose this answer:
+「{opp_expr}」
 {history}
-Guess your own card number. If you think both cards sum to 14, declare Ragaman.
+Where does 「{opp_expr}」 fall on the opponent's "{obs['criterion']}" scale?
+Use past turns to calibrate: what items did the opponent pick for known numbers?
+
+Rules:
+- The opponent's answer DIRECTLY reflects YOUR card's value, filtered through their personality.
+- Focus on the ANSWER ITSELF and past patterns — not commentary or tone.
+- The two cards are independent random draws. No correlation.
 
 Reply in JSON:
 ```json
 {{
-  "opponent_scale_reading": "what you infer about opponent's scale (1-2 sentences)",
+  "opponent_scale_reading": "where does this answer fall on opponent's scale, based on past patterns (1-2 sentences)",
   "my_guess": <number 1-13>,
-  "guess_reasoning": "why (1-2 sentences)",
+  "guess_reasoning": "why — reference specific past answers if available (1-2 sentences)",
   "ragaman": true/false,
-  "ragaman_reasoning": "basis for ragaman call (1 sentence)"
+  "ragaman_reasoning": "only declare if you have genuine confidence (1 sentence)"
 }}
 ```"""
 
