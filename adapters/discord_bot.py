@@ -1,7 +1,10 @@
 """Discord adapter for AI Persona Arena.
 
 Run:
-    ARENA_DISCORD_TOKEN=... PYTHONPATH=src python adapters/discord_bot.py
+    ARENA_DISCORD_TOKEN=... python adapters/discord_bot.py
+
+    For instant slash-command sync (recommended for dev):
+    ARENA_DISCORD_TOKEN=... ARENA_DISCORD_GUILD=<guild_id> python adapters/discord_bot.py
 
 Slash commands:
     /ragaman theme:drinks criterion:warmth turns:5
@@ -20,8 +23,10 @@ import os
 import sys
 from pathlib import Path
 
-# Add src to path for arena imports
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+# Add src + project root to path
+_root = Path(__file__).parent.parent
+sys.path.insert(0, str(_root / "src"))
+sys.path.insert(0, str(_root))
 
 import discord
 from discord import app_commands
@@ -47,8 +52,15 @@ tree = app_commands.CommandTree(bot)
 
 @bot.event
 async def on_ready():
-    await tree.sync()
-    log.info("Arena bot ready as %s (synced slash commands)", bot.user)
+    guild_id = os.environ.get("ARENA_DISCORD_GUILD")
+    if guild_id:
+        guild = discord.Object(id=int(guild_id))
+        tree.copy_global_to(guild=guild)
+        await tree.sync(guild=guild)
+        log.info("Arena bot ready as %s (synced to guild %s)", bot.user, guild_id)
+    else:
+        await tree.sync()
+        log.info("Arena bot ready as %s (global sync — may take up to 1h)", bot.user)
 
 
 @tree.command(name="ragaman", description="Start a Ragaman match (INANNA vs CARDMAN)")
